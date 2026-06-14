@@ -42,6 +42,10 @@ RoundResult GameEngine::EvaluateRound(Move playerMove, const std::vector<Move>& 
         return result;
     }
 
+    // A bot may forfeit with Move::Invalid (e.g. a disconnected remote player).
+    // Such participants lose every pairing and never award/score points; only the
+    // valid moves decide draws. (GetScore is never called with Invalid, so its
+    // defensive throw is preserved.)
     bool hasRock = false, hasPaper = false, hasScissors = false;
     for (Move m : result.moves) {
         if (m == Move::Rock)     hasRock     = true;
@@ -49,24 +53,37 @@ RoundResult GameEngine::EvaluateRound(Move playerMove, const std::vector<Move>& 
         if (m == Move::Scissors) hasScissors = true;
     }
 
+    // Awards pts to every non-forfeiting participant (forfeiters keep their 0).
+    auto awardValid = [&](int pts) {
+        for (size_t i = 0; i < n; ++i)
+            if (result.moves[i] != Move::Invalid) result.deltas[i] = pts;
+    };
+
     if (hasRock && hasPaper && hasScissors) {
         result.outcome = RoundResult::Outcome::ThreeWayDraw;
-        for (auto& d : result.deltas) d = 1;
+        awardValid(1);
         return result;
     }
 
     // Round-robin: every pair plays; participant(s) with most wins take 2 pts.
+    // A forfeiter (Invalid) loses to any valid move; two forfeiters tie with no win.
     std::vector<int> wins(n, 0);
     for (size_t i = 0; i < n; ++i)
         for (size_t j = i + 1; j < n; ++j) {
-            const int r = GetScore(result.moves[i], result.moves[j]);
+            const Move a = result.moves[i], b = result.moves[j];
+            if (a == Move::Invalid && b == Move::Invalid) continue;
+            if (a == Move::Invalid) { ++wins[j]; continue; }
+            if (b == Move::Invalid) { ++wins[i]; continue; }
+            const int r = GetScore(a, b);
             if (r == 2)      ++wins[i];
             else if (r == 0) ++wins[j];
         }
 
     const int maxWins = *std::max_element(wins.begin(), wins.end());
 
-    // maxWins == 0: every pair comparison was a tie — all participants chose the same move.
+    // maxWins == 0: every pairing tied. A forfeiter would have handed the (always
+    // valid) player a win, so this only happens when all participants are valid and
+    // chose the same move — a genuine draw.
     if (maxWins == 0) {
         result.outcome = RoundResult::Outcome::Draw;
         for (auto& d : result.deltas) d = 1;

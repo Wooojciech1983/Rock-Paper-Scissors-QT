@@ -28,19 +28,19 @@ Move RandomMove()
 
 Move ZhejiangBot::PickMove()
 {
-    if (!hasPlayed || lastDelta == 1) {
-        lastMove = RandomMove();
-    } else if (lastDelta == 2) {
+    if (!mHasPlayed || mLastDelta == 1) {
+        mLastMove = RandomMove();
+    } else if (mLastDelta == 2) {
         // Won last round — keep the same move.
     } else {
         // Lost last round — shift clockwise.
-        lastMove = ShiftClockwise(lastMove);
+        mLastMove = ShiftClockwise(mLastMove);
     }
-    hasPlayed = true;
-    return lastMove;
+    mHasPlayed = true;
+    return mLastMove;
 }
 
 void ZhejiangBot::NotifyResult(int delta)
 {
-    lastDelta = delta;
+    mLastDelta = delta;
 }

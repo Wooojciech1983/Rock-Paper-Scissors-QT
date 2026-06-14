@@ -9,15 +9,15 @@
 #include <vector>
 
 class GameController {
-    std::string playerName;
-    size_t opponents;
-    int playerScore = 0;
-    std::vector<int> botScores;
-    std::vector<std::string> botNames;
-    std::vector<std::unique_ptr<IBotStrategy>> bots;
+    std::string mPlayerName;
+    size_t mOpponents;
+    int mPlayerScore = 0;
+    std::vector<int> mBotScores;
+    std::vector<std::string> mBotNames;
+    std::vector<std::unique_ptr<IBotStrategy>> mBots;
 
-    IGameView& view;
-    std::istream& in;
+    IGameView& mView;
+    std::istream& mIn;
 
     Move ReadPlayerMove();
 
@@ -28,6 +28,15 @@ public:
     GameController(std::string name, int opponents,
                    IGameView& view, std::istream& in,
                    bool withZhejiangBot = false);
+
+    // Injection constructor for the network host: the caller supplies ready-made
+    // participant strategies (remote players + AI bots) and their display names,
+    // positionally aligned. PlayRound()/ReadPlayerMove()/ShowResults() are
+    // unchanged — they operate on these members regardless of who built them.
+    GameController(std::string name,
+                   std::vector<std::unique_ptr<IBotStrategy>> participants,
+                   std::vector<std::string> participantNames,
+                   IGameView& view, std::istream& in);
 
     void PlayRound();
     void ShowResults() const;

@@ -9,12 +9,12 @@
 class GameController;
 
 class TournamentManager {
-    std::string humanName;
-    int botCount;
-    bool withZhejiangBot;
-    IGameView& view;
-    std::istream& in;
-    mutable std::mt19937 rng;
+    std::string mHumanName;
+    int mBotCount;
+    bool mWithZhejiangBot;
+    IGameView& mView;
+    std::istream& mIn;
+    mutable std::mt19937 mRng;
 
     using Group   = std::vector<TournamentParticipant>;
     using Bracket = std::vector<Group>;

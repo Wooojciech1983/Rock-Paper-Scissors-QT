@@ -6,9 +6,9 @@
 // clockwise (Rock→Paper, Paper→Scissors, Scissors→Rock); pick randomly after a draw
 // or on the first round.
 class ZhejiangBot : public IBotStrategy {
-    Move lastMove  = Move::Rock;
-    int  lastDelta = 1; // 1 = draw, treated as "no clear history" initially
-    bool hasPlayed = false;
+    Move mLastMove  = Move::Rock;
+    int  mLastDelta = 1; // 1 = draw, treated as "no clear history" initially
+    bool mHasPlayed = false;
 
 public:
     Move PickMove()          override;

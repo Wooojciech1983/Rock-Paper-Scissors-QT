@@ -1,0 +1,23 @@
+{
+    // This project builds against the system Qt6 install with the Qt-bundled
+    // MinGW 13.1.0 toolchain (ABI-matched to the Qt6 mingw_64 kit). The build is
+    // driven entirely by CMakePresets.json -> the "qt-mingw" preset. Conan is no
+    // longer used (gtest comes via FetchContent, Qt from the installer).
+    "cmake.useCMakePresets": "always",
+
+    // Pin a preset-capable CMake (>=3.21). The Qt installer ships one.
+    "cmake.cmakePath": "C:/Qt/Tools/CMake_64/bin/cmake.exe",
+
+    // Put the Qt6 and MinGW runtime DLLs on PATH so the GUI launches from the IDE.
+    "cmake.environment": {
+        "PATH": "C:/Qt/6.11.1/mingw_64/bin;C:/Qt/Tools/mingw1310_64/bin;${env:PATH}"
+    },
+
+    // IntelliSense: let the C/C++ extension get include paths/defines straight from
+    // CMake Tools (it knows the Qt include dirs), with the generated compile
+    // database as a fallback. This resolves the <QByteArray>/<QJsonObject>/... etc.
+    // squiggles even though the actual build already finds them.
+    "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build-qt/compile_commands.json",
+    "C_Cpp.default.cppStandard": "c++20"
+}

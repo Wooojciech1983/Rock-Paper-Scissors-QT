@@ -99,6 +99,34 @@ TEST(EvaluateRound, EmptyBotVector) {
     EXPECT_EQ(r.deltas, (std::vector<int>{1}));
 }
 
+TEST(EvaluateRound, BotForfeitLosesToValidPlayer) {
+    // A bot forfeits (Invalid, e.g. a disconnected remote player): it loses, the
+    // valid player wins. GetScore must never be called with Invalid (no throw).
+    RoundResult r = GameEngine::EvaluateRound(Move::Rock, {Move::Invalid});
+    EXPECT_EQ(r.outcome, RoundResult::Outcome::PlayerWins);
+    EXPECT_EQ(r.deltas, (std::vector<int>{2, 0}));
+}
+
+TEST(EvaluateRound, BotForfeitAmongValidParticipants) {
+    // Player Rock, bot0 Scissors (loses to Rock), bot1 forfeits: player wins.
+    RoundResult r = GameEngine::EvaluateRound(Move::Rock, {Move::Scissors, Move::Invalid});
+    EXPECT_EQ(r.outcome, RoundResult::Outcome::PlayerWins);
+    EXPECT_EQ(r.deltas, (std::vector<int>{2, 0, 0}));
+}
+
+TEST(EvaluateRound, AllBotsForfeitPlayerWins) {
+    RoundResult r = GameEngine::EvaluateRound(Move::Paper, {Move::Invalid, Move::Invalid});
+    EXPECT_EQ(r.outcome, RoundResult::Outcome::PlayerWins);
+    EXPECT_EQ(r.deltas, (std::vector<int>{2, 0, 0}));
+}
+
+TEST(EvaluateRound, ThreeWayDrawWithForfeiterExcluded) {
+    // Valid moves cover R/P/S (three-way draw among them); the forfeiter gets 0.
+    RoundResult r = GameEngine::EvaluateRound(Move::Rock, {Move::Paper, Move::Scissors, Move::Invalid});
+    EXPECT_EQ(r.outcome, RoundResult::Outcome::ThreeWayDraw);
+    EXPECT_EQ(r.deltas, (std::vector<int>{1, 1, 1, 0}));
+}
+
 TEST(EvaluateRound, DeltasSizeMatchesParticipantCount) {
     RoundResult r = GameEngine::EvaluateRound(Move::Rock, {Move::Paper, Move::Scissors, Move::Rock});
     EXPECT_EQ(r.deltas.size(), 4u);  // player + 3 bots

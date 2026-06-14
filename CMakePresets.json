@@ -1,0 +1,40 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {
+        "major": 3,
+        "minor": 21,
+        "patch": 0
+    },
+    "configurePresets": [
+        {
+            "name": "qt-mingw",
+            "displayName": "Qt6 MinGW 13.1.0 (Ninja)",
+            "description": "Builds the Qt GUI/network app with the toolchain bundled by the official Qt installer (ABI-matched to the Qt6 mingw_64 kit).",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-qt",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_C_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/gcc.exe",
+                "CMAKE_CXX_COMPILER": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
+                "CMAKE_MAKE_PROGRAM": "C:/Qt/Tools/Ninja/ninja.exe",
+                "CMAKE_PREFIX_PATH": "C:/Qt/6.11.1/mingw_64"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "qt-mingw",
+            "configurePreset": "qt-mingw",
+            "jobs": 12
+        }
+    ],
+    "testPresets": [
+        {
+            "name": "qt-mingw",
+            "configurePreset": "qt-mingw",
+            "output": {
+                "outputOnFailure": true
+            }
+        }
+    ]
+}

@@ -18,35 +18,56 @@ void SimulateBotThinking() {
 GameController::GameController(std::string name, int opponents,
                                 IGameView& view, std::istream& in,
                                 bool withZhejiangBot)
-    : playerName(std::move(name))
-    , opponents(static_cast<size_t>(std::clamp(opponents, 1, maxOpponents)))
-    , view(view)
-    , in(in)
+    : mPlayerName(std::move(name))
+    , mOpponents(static_cast<size_t>(std::clamp(opponents, 1, maxOpponents)))
+    , mView(view)
+    , mIn(in)
 {
-    botScores.resize(this->opponents, 0);
-    bots.reserve(this->opponents);
-    botNames.reserve(this->opponents);
+    mBotScores.resize(mOpponents, 0);
+    mBots.reserve(mOpponents);
+    mBotNames.reserve(mOpponents);
 
     if (withZhejiangBot) {
-        bots.emplace_back(std::make_unique<ZhejiangBot>());
-        botNames.push_back("Zhejiang Bot");
+        mBots.emplace_back(std::make_unique<ZhejiangBot>());
+        mBotNames.push_back("Zhejiang Bot");
     }
 
-    const size_t randomBotCount = withZhejiangBot ? this->opponents - 1 : this->opponents;
+    const size_t randomBotCount = withZhejiangBot ? mOpponents - 1 : mOpponents;
     for (size_t i = 0; i < randomBotCount; ++i) {
-        bots.emplace_back(std::make_unique<RandomBot>());
-        botNames.push_back("Opponent " + std::to_string(i + 1));
+        mBots.emplace_back(std::make_unique<RandomBot>());
+        mBotNames.push_back("Opponent " + std::to_string(i + 1));
     }
+}
+
+GameController::GameController(std::string name,
+                              std::vector<std::unique_ptr<IBotStrategy>> participants,
+                              std::vector<std::string> participantNames,
+                              IGameView& view, std::istream& in)
+    : mPlayerName(std::move(name))
+    , mOpponents(participants.size())
+    , mBotNames(std::move(participantNames))
+    , mBots(std::move(participants))
+    , mView(view)
+    , mIn(in)
+{
+    // Names and strategies are positionally aligned; pad/trim defensively so an
+    // off-by-one from the caller can't desync the scoreboard or crash a round.
+    mBotNames.resize(mOpponents);
+    for (size_t i = 0; i < mOpponents; ++i)
+        if (mBotNames[i].empty())
+            mBotNames[i] = "Opponent " + std::to_string(i + 1);
+
+    mBotScores.resize(mOpponents, 0);
 }
 
 Move GameController::ReadPlayerMove()
 {
-    view.ShowMovePrompt();
+    mView.ShowMovePrompt();
 
     for (int remaining = 3; remaining > 0; --remaining)
     {
         std::string input;
-        if (!std::getline(in, input)) break;
+        if (!std::getline(mIn, input)) break;
 
         switch (!input.empty() ? input[0] : '\0')
         {
@@ -57,7 +78,7 @@ Move GameController::ReadPlayerMove()
         }
 
         if (remaining > 1)
-            view.ShowInvalidInput(remaining - 1);
+            mView.ShowInvalidInput(remaining - 1);
     }
 
     return Move::Invalid;
@@ -66,19 +87,19 @@ Move GameController::ReadPlayerMove()
 void GameController::PlayRound()
 {
     std::vector<std::future<Move>> botFutures;
-    botFutures.reserve(opponents);
-    for (size_t i = 0; i < opponents; ++i) {
+    botFutures.reserve(mOpponents);
+    for (size_t i = 0; i < mOpponents; ++i) {
         botFutures.emplace_back(std::async(std::launch::async, [this, i]() -> Move {
             SimulateBotThinking();
-            const Move choice = bots[i]->PickMove();
-            view.ShowBotReady(botNames[i]);
+            const Move choice = mBots[i]->PickMove();
+            mView.ShowBotReady(mBotNames[i]);
             return choice;
         }));
     }
 
     // Block until every bot has decided — player input opens after all are ready.
     std::vector<Move> botMoves;
-    botMoves.reserve(opponents);
+    botMoves.reserve(mOpponents);
     for (auto& f : botFutures)
         botMoves.push_back(f.get());
 
@@ -88,15 +109,15 @@ void GameController::PlayRound()
 
     // Skip move display on forfeit — '?' would be confusing; ShowRoundResult covers the outcome.
     if (playerMove != Move::Invalid) {
-        view.ShowRoundMoves(playerName, playerMove, botNames, botMoves);
+        mView.ShowRoundMoves(mPlayerName, playerMove, mBotNames, botMoves);
     }
 
-    view.ShowRoundResult(playerName, botNames, result);
+    mView.ShowRoundResult(mPlayerName, mBotNames, result);
 
-    playerScore += result.deltas[0];
+    mPlayerScore += result.deltas[0];
     for (size_t i = 0; i < botMoves.size(); ++i) {
-        botScores[i] += result.deltas[i + 1];
-        bots[i]->NotifyResult(result.deltas[i + 1]);
+        mBotScores[i] += result.deltas[i + 1];
+        mBots[i]->NotifyResult(result.deltas[i + 1]);
     }
 }
 
@@ -121,7 +142,7 @@ RoundResult GameController::PlayTournamentRound(const std::vector<TournamentPart
                 [this, i, botName, strategy]() -> BotResult {
                     SimulateBotThinking();
                     Move choice = strategy->PickMove();
-                    view.ShowTournamentBotReady(botName);
+                    mView.ShowTournamentBotReady(botName);
                     return {i, choice};
                 }));
         }
@@ -158,8 +179,8 @@ RoundResult GameController::PlayTournamentRound(const std::vector<TournamentPart
         result = GameEngine::EvaluateRound(moves[0], botMoves);
     }
 
-    view.ShowTournamentMoves(names, moves);
-    view.ShowTournamentResult(names, result);
+    mView.ShowTournamentMoves(names, moves);
+    mView.ShowTournamentResult(names, result);
 
     for (size_t i = 0; i < participants.size(); ++i)
         if (!participants[i].isHuman && participants[i].strategy)
@@ -170,8 +191,8 @@ RoundResult GameController::PlayTournamentRound(const std::vector<TournamentPart
 
 void GameController::ShowResults() const
 {
-    view.ShowFinalScores(playerName, playerScore, botNames, botScores);
+    mView.ShowFinalScores(mPlayerName, mPlayerScore, mBotNames, mBotScores);
 }
 
-int GameController::GetPlayerScore() const { return playerScore; }
-const std::vector<int>& GameController::GetBotScores() const { return botScores; }
+int GameController::GetPlayerScore() const { return mPlayerScore; }
+const std::vector<int>& GameController::GetBotScores() const { return mBotScores; }

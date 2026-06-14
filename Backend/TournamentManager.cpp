@@ -9,13 +9,13 @@
 TournamentManager::TournamentManager(std::string humanName, int botCount,
                                      IGameView& view, std::istream& in,
                                      bool withZhejiangBot)
-    : humanName(std::move(humanName)), botCount(botCount), withZhejiangBot(withZhejiangBot)
-    , view(view), in(in), rng(std::random_device{}()) {}
+    : mHumanName(std::move(humanName)), mBotCount(botCount), mWithZhejiangBot(withZhejiangBot)
+    , mView(view), mIn(in), mRng(std::random_device{}()) {}
 
 TournamentManager::Bracket TournamentManager::CreateBracket(
     std::vector<TournamentParticipant> participants) const
 {
-    std::shuffle(participants.begin(), participants.end(), rng);
+    std::shuffle(participants.begin(), participants.end(), mRng);
 
     Bracket bracket;
     size_t i = 0;
@@ -45,9 +45,9 @@ TournamentParticipant TournamentManager::RunMatch(const Group& group, GameContro
 
     while (true) {
         if (hasHuman) {
-            view.ShowMessage("Press Enter to play the round.");
+            mView.ShowMessage("Press Enter to play the round.");
             std::string dummy;
-            std::getline(in, dummy);
+            std::getline(mIn, dummy);
         }
 
         const RoundResult result = ctrl.PlayTournamentRound(current);
@@ -69,7 +69,7 @@ TournamentParticipant TournamentManager::RunMatch(const Group& group, GameContro
 
         std::vector<std::string> subNames;
         for (const auto& p : subGroup) subNames.push_back(p.name);
-        view.ShowSubMatchStart(subNames);
+        mView.ShowSubMatchStart(subNames);
 
         hasHuman = containsHuman(subGroup);
         current = std::move(subGroup);
@@ -79,24 +79,24 @@ TournamentParticipant TournamentManager::RunMatch(const Group& group, GameContro
 void TournamentManager::RunTournament()
 {
     std::vector<TournamentParticipant> all;
-    all.push_back({ .name = humanName, .isHuman = true, .strategy = nullptr });
+    all.push_back({ .name = mHumanName, .isHuman = true, .strategy = nullptr });
 
-    if (withZhejiangBot)
+    if (mWithZhejiangBot)
         all.push_back({ .name = "Zhejiang Bot", .isHuman = false, .strategy = std::make_shared<ZhejiangBot>() });
 
-    const int randomBotCount = withZhejiangBot ? botCount - 1 : botCount;
+    const int randomBotCount = mWithZhejiangBot ? mBotCount - 1 : mBotCount;
     for (int i = 1; i <= randomBotCount; ++i)
         all.push_back({ .name = "Bot " + std::to_string(i), .isHuman = false, .strategy = std::make_shared<RandomBot>() });
 
     // GameController is used solely for PlayTournamentRound (view + input access)
-    GameController ctrl(humanName, botCount, view, in);
+    GameController ctrl(mHumanName, mBotCount, mView, mIn);
 
     std::vector<TournamentParticipant> current = all;
     int roundNum = 0;
 
     while (current.size() > 1) {
         ++roundNum;
-        view.ShowTournamentRoundStart(roundNum);
+        mView.ShowTournamentRoundStart(roundNum);
 
         const Bracket bracket = CreateBracket(current);
         std::vector<TournamentParticipant> nextRound;
@@ -104,15 +104,15 @@ void TournamentManager::RunTournament()
         for (const Group& group : bracket) {
             std::vector<std::string> names;
             for (const auto& p : group) names.push_back(p.name);
-            view.ShowMatchStart(names);
+            mView.ShowMatchStart(names);
 
             const TournamentParticipant winner = RunMatch(group, ctrl);
-            view.ShowMatchResult(winner.name);
+            mView.ShowMatchResult(winner.name);
             nextRound.push_back(winner);
         }
 
         current = nextRound;
     }
 
-    view.ShowTournamentWinner(current[0].name);
+    mView.ShowTournamentWinner(current[0].name);
 }
